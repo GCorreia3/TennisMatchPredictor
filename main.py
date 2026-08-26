@@ -12,10 +12,11 @@ df_matches_2025 = pd.read_csv("atp_matches_2025.csv")
 df_matches_2026 = pd.read_csv("atp_matches_2026.csv")
 matches_list = [df_matches_2020, df_matches_2021, df_matches_2022, df_matches_2023, df_matches_2024, df_matches_2025, df_matches_2026]
 df_matches = pd.concat(matches_list, axis=0, ignore_index=True)
+df_matches["tourney_date"] = pd.to_datetime(df_matches["tourney_date"], format="%Y%m%d")
 
 # Players dataframe
 df_players = pd.read_csv("atp_players.csv")
-df_players["dob"] = pd.to_datetime(df_players["dob"], format='mixed')
+#df_players["dob"] = pd.to_datetime(df_players["dob"], format="%Y%m%d")
 
 
 df_current_rankings = pd.read_csv("atp_rankings_current.csv")
@@ -25,12 +26,7 @@ rankings_list = [df_current_rankings, df_rankings_20s]
 df_rankings = pd.concat(rankings_list, axis=0, ignore_index=True)
 
 # convert date int to datetime
-df_rankings['ranking_date'] = pd.to_datetime(df_rankings['ranking_date'], format='mixed')
-
-first_names = df_players["name_first"]
-last_names = df_players["name_last"]
-
-names = first_names + " " + last_names
+df_rankings['ranking_date'] = pd.to_datetime(df_rankings['ranking_date'], format='%Y%m%d')
 
 def find_player_rankings(player_id):
     return df_rankings.loc[df_rankings["player"] == player_id]
@@ -46,28 +42,28 @@ def id_to_player(player_id):
 
 
 # How many matches are there
-print(f"Number of matches: {len(df_matches)}")
+#print(f"Number of matches: {len(df_matches)}")
 
 # What columns exist
-print(df_matches.columns)
+#print(df_matches.columns)
 
 # Which columns contain missing data
-print(df_matches.info())
+#print(df_matches.info())
 
 # How many matches occur on each surface
 hard_matches = df_matches[df_matches.surface == "Hard"]
-print(f"Number of matches on hard: {len(hard_matches)}")
+#print(f"Number of matches on hard: {len(hard_matches)}")
 clay_matches = df_matches[df_matches.surface == "Clay"]
-print(f"Number of matches on clay: {len(clay_matches)}")
+#print(f"Number of matches on clay: {len(clay_matches)}")
 grass_matches = df_matches[df_matches.surface == "Grass"]
-print(f"Number of matches on grass: {len(grass_matches)}")
+#print(f"Number of matches on grass: {len(grass_matches)}")
 
 # What tournaments exist
-print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
-print(df_matches["tourney_name"].value_counts())
+#print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
+#print(df_matches["tourney_name"].value_counts())
 
 # How many unique players are there
-print(f"Number of unique players: {df_players['player_id'].nunique()}")
+#print(f"Number of unique players: {df_players['player_id'].nunique()}")
 
 # What percentage of matches are won by the higher-ranked player
 def find_higher_rank_win_percentage(matches: pd.DataFrame):
@@ -85,12 +81,12 @@ def find_higher_rank_win_percentage(matches: pd.DataFrame):
 
     return (winner_count / total_count) * 100
 
-print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}")
+#print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}")
 
 # Does that percentage differ between hard/clay/grass
-print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}")
-print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}")
-print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}")
+#print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}")
+#print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}")
+#print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}")
 
 # How does ranking difference relate to probability of winning
 df_matches["rank_diff"] = (df_matches["winner_rank"] - df_matches["loser_rank"]).abs()
@@ -103,10 +99,11 @@ colors = ["red", "orange", "yellow", "green", "blue", "purple", "pink"]
 df_matches["rank_bucket"] = pd.cut(df_matches["rank_diff"], bins=bins)
 
 df = df_matches.groupby("rank_bucket")["higher_ranked_won"].mean()
-print(df)
+#print(df)
 
 plt.bar(mid, df, width=widths, color=colors)
-plt.show()
+plt.ylim(0, 1)
+#plt.show()
 
 # Which players have played the most matches
 wins_per_id = df_matches["winner_id"].value_counts()
@@ -141,4 +138,76 @@ data = {
 }
 
 df_match_count_per_id = pd.DataFrame(data)
-print(df_match_count_per_id.sort_values("match_count", ascending=False))
+#print(df_match_count_per_id.sort_values("match_count", ascending=False))
+
+# Jannik Sinner: 206173
+
+# Find a player's ranking
+name = "Jannik Sinner"
+id = name_to_player(name).iloc[0]["player_id"]
+current_ranking = find_player_rankings(id).sort_values("ranking_date", ascending=False).iloc[0]["rank"]
+print(f"Current Ranking: {current_ranking}")
+
+# Find a player's ranking at a given date
+date = pd.Timestamp("2021-07-01")
+rankings = find_player_rankings(id).sort_values("ranking_date", ascending=False)
+rankings_upto_date = rankings[rankings["ranking_date"] <= date]
+ranking_at_date = rankings_upto_date.iloc[0]["rank"]
+print(f"Ranking on {date.strftime('%Y-%m-%d')}: {ranking_at_date}")
+
+# Find a player's previous matches before a given date
+df_matches = df_matches.sort_values("tourney_date", ascending=False)
+previous_matches = df_matches[
+    (
+        (df_matches["winner_name"] == name) |
+        (df_matches["loser_name"] == name)
+    )
+    &
+    (df_matches["tourney_date"] < date)
+]
+print(f"Previous mathces upto {date.strftime('%Y-%m-%d')}: {previous_matches}")
+
+last_10 = previous_matches.head(10)
+last_5 = previous_matches.head(5)
+
+# Calculate a player's career win percentage before a given date
+previous_won_matches = df_matches[(df_matches["winner_name"] == name) & (df_matches["tourney_date"] < date)]
+print(f"Win percentage before {date.strftime('%Y-%m-%d')}: {(len(previous_won_matches) / len(previous_matches))*100}%")
+
+# Calculate win percentage over their last 5 matches
+won_last_5 = last_5[last_5["winner_name"] == name]
+print(f"Win percentage of last 5 matches: {(len(won_last_5) / len(last_5))*100}%")
+
+# Calculate win percentage over their last 10 matches
+won_last_10 = last_10[last_10["winner_name"] == name]
+print(f"Win percentage of last 10 matches: {(len(won_last_10) / len(last_10))*100}%")
+
+# Calculate win percentage on hard / clay / grass
+
+# Calculate recent win percentage on a particular surface
+
+# Find number of days since player's previous match
+
+# Compare head-to-head between two players
+
+# Compare head-to-head before a given date
+
+# Compare head-to-head on a particular surface
+
+# Calculate average opponent ranking over recent matches
+
+# Calculate percentage of matches where the higher-ranked player wins
+
+# Calculate a player's win percentage against higher-ranked opponents
+
+# Calculate a player's win percentage against lower-ranked opponents
+
+# Build a function that takes two players + a date and returns all of the above
+
+# Build your first Elo rating system
+
+# Build separate hard / clay / grass Elo ratings
+
+# Turn each historical match into a row of pre-match features
+
+# Build a very simple prediction baseline
