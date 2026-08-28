@@ -3,7 +3,7 @@
 As a tennis player myself, this project is an opportunity to learn data analytics and machine learning by predicting the likelihood of a tennis player winning a match.
 I will be using real world data of Men's atp matches dating from 2020 up to present.
 
-Goals:
+## Goals:
 
 Completed: Sort and clean data
 

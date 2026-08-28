@@ -146,63 +146,165 @@ df_match_count_per_id = pd.DataFrame(data)
 name = "Jannik Sinner"
 id = name_to_player(name).iloc[0]["player_id"]
 current_ranking = find_player_rankings(id).sort_values("ranking_date", ascending=False).iloc[0]["rank"]
-print(f"Current Ranking: {current_ranking}")
+#print(f"Current {name} Ranking: {current_ranking}")
 
-# Find a player's ranking at a given date
-date = pd.Timestamp("2021-07-01")
-rankings = find_player_rankings(id).sort_values("ranking_date", ascending=False)
-rankings_upto_date = rankings[rankings["ranking_date"] <= date]
-ranking_at_date = rankings_upto_date.iloc[0]["rank"]
-print(f"Ranking on {date.strftime('%Y-%m-%d')}: {ranking_at_date}")
-
-# Find a player's previous matches before a given date
-df_matches = df_matches.sort_values("tourney_date", ascending=False)
-previous_matches = df_matches[
-    (
-        (df_matches["winner_name"] == name) |
-        (df_matches["loser_name"] == name)
-    )
-    &
-    (df_matches["tourney_date"] < date)
-]
-print(f"Previous mathces upto {date.strftime('%Y-%m-%d')}: {previous_matches}")
-
-last_10 = previous_matches.head(10)
-last_5 = previous_matches.head(5)
-
-# Calculate a player's career win percentage before a given date
-previous_won_matches = df_matches[(df_matches["winner_name"] == name) & (df_matches["tourney_date"] < date)]
-print(f"Win percentage before {date.strftime('%Y-%m-%d')}: {(len(previous_won_matches) / len(previous_matches))*100}%")
-
-# Calculate win percentage over their last 5 matches
-won_last_5 = last_5[last_5["winner_name"] == name]
-print(f"Win percentage of last 5 matches: {(len(won_last_5) / len(last_5))*100}%")
-
-# Calculate win percentage over their last 10 matches
-won_last_10 = last_10[last_10["winner_name"] == name]
-print(f"Win percentage of last 10 matches: {(len(won_last_10) / len(last_10))*100}%")
-
-# Calculate win percentage on hard / clay / grass
-
-# Calculate recent win percentage on a particular surface
-
-# Find number of days since player's previous match
-
-# Compare head-to-head between two players
-
-# Compare head-to-head before a given date
-
-# Compare head-to-head on a particular surface
-
-# Calculate average opponent ranking over recent matches
-
-# Calculate percentage of matches where the higher-ranked player wins
-
-# Calculate a player's win percentage against higher-ranked opponents
-
-# Calculate a player's win percentage against lower-ranked opponents
+date = pd.Timestamp("2025-06-26")
 
 # Build a function that takes two players + a date and returns all of the above
+
+def get_player_stats(df_matches, name, date, surface):
+    info_dict = {}
+
+    id = name_to_player(name).iloc[0]["player_id"]
+    info_dict["player_id"] = id
+
+    # Find a player's ranking at a given date
+    rankings = find_player_rankings(id).sort_values("ranking_date", ascending=False)
+    rankings_upto_date = rankings[rankings["ranking_date"] <= date]
+    ranking_at_date = rankings_upto_date.iloc[0]["rank"]
+    #print(f"Ranking on {date.strftime('%Y-%m-%d')}: {ranking_at_date}")
+
+    info_dict["ranking"] = int(ranking_at_date)
+
+    # Find a player's previous matches before a given date
+    df_matches = df_matches.sort_values(["tourney_date", "match_num"], ascending=[False, False])
+    previous_matches = df_matches[
+        (
+            (df_matches["winner_name"] == name) |
+            (df_matches["loser_name"] == name)
+        )
+        &
+        (df_matches["tourney_date"] < date)
+    ]
+    #print(f"Previous mathces upto {date.strftime('%Y-%m-%d')}: {previous_matches}")
+
+    #info_dict["previous_matches"] = previous_matches
+
+    last_10 = previous_matches.head(10)
+    last_5 = previous_matches.head(5)
+
+    # Calculate a player's career win percentage before a given date
+    previous_won_matches = previous_matches[previous_matches["winner_name"] == name]
+    #print(f"Win percentage before {date.strftime('%Y-%m-%d')}: {(len(previous_won_matches) / len(previous_matches))*100}%")
+
+    # Calculate win percentage over their last 5 matches
+    won_last_5 = last_5[last_5["winner_name"] == name]
+    #print(f"Win percentage of last 5 matches: {(len(won_last_5) / len(last_5))*100}%")
+
+    info_dict["last_5_win_rate"] = len(won_last_5) / len(last_5)
+
+    # Calculate win percentage over their last 10 matches
+    won_last_10 = last_10[last_10["winner_name"] == name]
+    #print(f"Win percentage of last 10 matches: {(len(won_last_10) / len(last_10))*100}%")
+
+    info_dict["last_10_win_rate"] = len(won_last_10) / len(last_10)
+
+    # Calculate win percentage on surface
+    player_surface_matches = previous_matches[previous_matches["surface"] == surface]
+    player_won_surface_matches = player_surface_matches[player_surface_matches["winner_name"] == name]
+    #print(f"Win percentage of hard for {name}: {(len(player_won_surface_matches)/len(player_surface_matches))*100}%")
+
+    info_dict[f"{surface}_win_rate"] = len(player_won_surface_matches)/len(player_surface_matches)
+
+    # Calculate recent win percentage on a particular surface
+    last_10_surface = player_surface_matches.head(10)
+    player_won_last_10_surface = last_10_surface[last_10_surface["winner_name"] == name]
+    #print(f"Win percentage of last 10 matches on {surface} for {name}: {(len(player_won_last_10_surface)/len(last_10_surface))*100}%")
+
+    # Find number of days since player's previous match
+    last_match_date = previous_matches.head(1).iloc[0]["tourney_date"]
+    days_since_last_match = (date - last_match_date).days
+    #print(f"Number of days since last match: {days_since_last_match}")
+
+    info_dict["days_since_last_match"] = days_since_last_match
+
+    # Calculate a player's win percentage against higher-ranked opponents
+    prev_matches_v_higher_rank = previous_matches[
+            (previous_matches["winner_name"] == name) & (previous_matches["winner_rank"] > previous_matches["loser_rank"])
+            |
+            (previous_matches["loser_name"] == name) & (previous_matches["winner_rank"] < previous_matches["loser_rank"])
+        ]
+
+    #print(f"{name} win percentage vs higher ranked ops: {find_higher_rank_win_percentage(prev_matches_v_higher_rank)}%")
+
+    info_dict["win_rate_v_higher_ops"] = find_higher_rank_win_percentage(prev_matches_v_higher_rank)/100
+
+    # Calculate a player's win percentage against lower-ranked opponents
+    prev_matches_v_lower_rank = previous_matches[
+            (previous_matches["winner_name"] == name) & (previous_matches["winner_rank"] < previous_matches["loser_rank"])
+            |
+            (previous_matches["loser_name"] == name) & (previous_matches["winner_rank"] > previous_matches["loser_rank"])
+        ]
+
+    #print(f"{name} win percentage vs lower ranked ops: {find_higher_rank_win_percentage(prev_matches_v_lower_rank)}%")
+
+    info_dict["win_rate_v_lower_ops"] = find_higher_rank_win_percentage(prev_matches_v_lower_rank)/100
+
+    return pd.DataFrame([info_dict])
+
+print(get_player_stats(df_matches, "Jannik Sinner", date, "Grass"))
+print(get_player_stats(df_matches, "Carlos Alcaraz", date, "Grass"))
+
+def find_upcoming_match_info(df_matches, name1, name2, date, surface):
+    head_to_head_info = {}
+
+    try:
+        player1_info = get_player_stats(df_matches, name1, date, surface)
+    except:
+        return print("Player 1 Name doesn't exist")
+
+    try:
+        player2_info = get_player_stats(df_matches, name2, date, surface)
+    except:
+        return print("Player 2 Name doesn't exist")
+
+    id1 = int(player1_info.iloc[0]["player_id"])
+    id2 = int(player2_info.iloc[0]["player_id"])
+
+    head_to_head_info["player_id1"] = id1
+    head_to_head_info["player_id2"] = id2
+
+    ranking1 = int(player1_info.iloc[0]["ranking"])
+    ranking2 = int(player2_info.iloc[0]["ranking"])
+
+    head_to_head_info["ranking1"] = ranking1
+    head_to_head_info["ranking2"] = ranking2
+
+    df_matches = df_matches.sort_values(["tourney_date", "match_num"], ascending=[False, False])
+    previous_matches1 = df_matches[
+        (
+            (df_matches["winner_name"] == name1) |
+            (df_matches["loser_name"] == name1)
+        )
+        &
+        (df_matches["tourney_date"] < date)
+    ]
+
+    # Compare head-to-head before a given date
+    previous_won_against = previous_matches1[previous_matches1["loser_name"] == name2]
+    previous_lose_against = previous_matches1[previous_matches1["winner_name"] == name2]
+    #print(f"{name1} vs {name2} (before {date.strftime('%Y-%m-%d')}): {len(previous_won_against)} vs {len(previous_lose_against)} wins")
+
+    head_to_head_info["1vs2_wins"] = f"{len(previous_won_against)}:{len(previous_lose_against)}"
+
+    # Compare head-to-head on a particular surface
+    previous_won_against_grass = previous_won_against[previous_won_against["surface"] == "Grass"]
+    previous_lose_against_grass = previous_lose_against[previous_lose_against["surface"] == "Grass"]
+    #print(f"Grass h2h {name1} vs {name2} (before {date.strftime('%Y-%m-%d')}): {len(previous_won_against_grass)} vs {len(previous_lose_against_grass)} wins")
+
+    head_to_head_info[f"1vs2_{surface}_wins"] = f"{len(previous_won_against_grass)}:{len(previous_lose_against_grass)}"
+
+    # Calculate average opponent ranking over recent matches
+
+    # Calculate percentage of matches where the higher-ranked player wins
+    #print(f"Percent {name1} higher rank when beat {name2}: {find_higher_rank_win_percentage(previous_won_against)}%")
+    head_to_head_info["win_rate_1_higher_rank"] = find_higher_rank_win_percentage(previous_won_against) / 100
+    #print(f"Percent {name2} higher rank when beat {name1}: {find_higher_rank_win_percentage(previous_lose_against)}%")
+    head_to_head_info["win_rate_2_higher_rank"] = find_higher_rank_win_percentage(previous_lose_against) / 100
+
+    return head_to_head_info
+
+print(find_upcoming_match_info(df_matches, "Jannik Sinner", "Carlos Alcaraz", date, "Grass"))
 
 # Build your first Elo rating system
 
