@@ -79,14 +79,17 @@ def find_higher_rank_win_percentage(matches: pd.DataFrame):
 
             total_count += 1
 
-    return (winner_count / total_count) * 100
+    if total_count == 0:
+        return 0
+    else:
+        return (winner_count / total_count) * 100
 
-#print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}")
+print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}%")
 
 # Does that percentage differ between hard/clay/grass
-#print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}")
-#print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}")
-#print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}")
+print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}%")
+print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}%")
+print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}%")
 
 # How does ranking difference relate to probability of winning
 df_matches["rank_diff"] = (df_matches["winner_rank"] - df_matches["loser_rank"]).abs()
@@ -101,9 +104,11 @@ df_matches["rank_bucket"] = pd.cut(df_matches["rank_diff"], bins=bins)
 df = df_matches.groupby("rank_bucket")["higher_ranked_won"].mean()
 #print(df)
 
-plt.bar(mid, df, width=widths, color=colors)
-plt.ylim(0, 1)
-#plt.show()
+# plt.bar(mid, df, width=widths, color=colors)
+# plt.ylim(0, 1)
+# plt.xlabel("Rank difference")
+# plt.ylabel("Probability of highest rank winning")
+# plt.show()
 
 # Which players have played the most matches
 wins_per_id = df_matches["winner_id"].value_counts()
@@ -242,9 +247,6 @@ def get_player_stats(df_matches, name, date, surface):
 
     return pd.DataFrame([info_dict])
 
-print(get_player_stats(df_matches, "Jannik Sinner", date, "Grass"))
-print(get_player_stats(df_matches, "Carlos Alcaraz", date, "Grass"))
-
 def find_upcoming_match_info(df_matches, name1, name2, date, surface):
     head_to_head_info = {}
 
@@ -304,9 +306,106 @@ def find_upcoming_match_info(df_matches, name1, name2, date, surface):
 
     return head_to_head_info
 
-print(find_upcoming_match_info(df_matches, "Jannik Sinner", "Carlos Alcaraz", date, "Grass"))
+
+# Predict who wins between two players based on who has a higher rank at the time
+
+info = find_upcoming_match_info(df_matches, "Taylor Fritz", "Novak Djokovic", date, "Grass")
+print(info)
+if info["ranking1"] < info["ranking2"]:
+    print("Player 1 wins")
+else:
+    print("Player 2 wins")
 
 # Build your first Elo rating system
+
+eloA = 1800
+eloB = 1200
+
+def get_expected_win_probability(elo1, elo2):
+    return 1 / (1 + 10**((elo2-elo1)/400))
+
+def update_elo(elo, win, probability):
+    K = 32
+    return elo + K * (win - probability)
+
+def update_players_elo(elo1, elo2, win):
+    probability = get_expected_win_probability(elo1, elo2)
+    return update_elo(elo1, win, probability), update_elo(elo2, 1-win, 1-probability)
+
+df_matches = df_matches.sort_values(["tourney_date", "match_num"], ascending=[True, True]) # sort so first match in list is first dated match
+players_elo = {}
+elo_dates_history = []
+elo_players_history = []
+elo_history = []
+for index, match in df_matches.iterrows():
+    # get players
+    nameA = match["winner_name"]
+    nameB = match["loser_name"]
+
+    date = match["tourney_date"]
+
+    # get current rating of A
+    if nameA in players_elo:
+        eloA = players_elo[nameA]
+    else:
+        eloA = 1500 # default value
+        elo_history.append(1500)
+        elo_players_history.append(nameA)
+        elo_dates_history.append(date)
+
+    # get current rating of B
+    if nameB in players_elo:
+        eloB = players_elo[nameB]
+    else:
+        eloB = 1500
+        elo_history.append(1500)
+        elo_players_history.append(nameB)
+        elo_dates_history.append(date)
+
+    # Calculate P(A wins)
+    # pA = get_expected_win_probability(eloA, eloB)
+    # pB = get_expected_win_probability(eloB, eloA)
+
+    # Find who wins
+    S = 1 # A always wins
+
+    # Update ratings
+    eloA, eloB = update_players_elo(eloA, eloB, S)
+    players_elo[nameA] = eloA
+    players_elo[nameB] = eloB
+
+    # Update history lists
+    elo_history.append(eloA)
+    elo_players_history.append(nameA)
+    elo_dates_history.append(date)
+
+    elo_history.append(eloB)
+    elo_players_history.append(nameB)
+    elo_dates_history.append(date)
+
+df_elos = pd.Series(players_elo, name="elo")
+df_elos.index.name = "player_name"
+df_elos = df_elos.reset_index()
+df_elos = df_elos.sort_values("elo", ascending=False)
+print(df_elos)
+
+df_elos_history = pd.DataFrame(
+    {
+        "date": elo_dates_history,
+        "player_name": elo_players_history,
+        "elo": elo_history
+    }
+)
+print(df_elos_history)
+
+sinner_elo_history = df_elos_history[df_elos_history["player_name"] == "Jannik Sinner"]
+print(sinner_elo_history)
+
+plt.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
+plt.title("Sinner elo over time")
+plt.xlabel("Date")
+plt.ylabel("Elo")
+plt.show()
 
 # Build separate hard / clay / grass Elo ratings
 
