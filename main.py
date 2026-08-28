@@ -106,6 +106,26 @@ df_matches["rank_bucket"] = pd.cut(df_matches["rank_diff"], bins=bins)
 df = df_matches.groupby("rank_bucket")["higher_ranked_won"].mean()
 #print(df)
 
+# probability of player with rank1 beating player with rank2 based off previous data
+def win_probability_from_ranking(rank1, rank2):
+    rank_diff = rank1 - rank2
+    abs_rank_diff = abs(rank_diff)
+
+    for index, x in enumerate(bins):
+        print(index)
+        if x == 0:
+            continue
+        if abs_rank_diff <= x:
+            probability = df.iloc[index]
+            break
+        elif abs_rank_diff > 500:
+            probability = df.iloc[6]
+
+    if rank_diff > 0: # positive means rank1 is higher than 2
+        probability = 1-probability
+
+    return probability
+
 # plt.bar(mid, df, width=widths, color=colors)
 # plt.ylim(0, 1)
 # plt.xlabel("Rank difference")
@@ -414,6 +434,7 @@ print(f"Percentage of correct guesses: {(correct_guesses / (correct_guesses+wron
 print(f"Number of random guesses: {random_guesses}")
 
 matches_2026 = df_matches[df_matches["tourney_date"] > pd.Timestamp("2026-01-01")]
+print(len(matches_2026))
 print(f"Percentage of highest rank wins 2026: {find_higher_rank_win_percentage(matches_2026)}%")
 
 df_elos_history = pd.DataFrame(
