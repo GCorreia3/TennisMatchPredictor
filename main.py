@@ -1,6 +1,7 @@
 import numpy
 import pandas as pd
 import matplotlib.pyplot as plt
+import random
 
 # Matches dataframes
 df_matches_2020 = pd.read_csv("atp_matches_2020.csv")
@@ -27,6 +28,7 @@ df_rankings = pd.concat(rankings_list, axis=0, ignore_index=True)
 
 # convert date int to datetime
 df_rankings['ranking_date'] = pd.to_datetime(df_rankings['ranking_date'], format='%Y%m%d')
+df_rankings = df_rankings.sort_values("ranking_date", ascending=True)
 
 def find_player_rankings(player_id):
     return df_rankings.loc[df_rankings["player"] == player_id]
@@ -337,6 +339,9 @@ players_elo = {}
 elo_dates_history = []
 elo_players_history = []
 elo_history = []
+correct_guesses = 0
+wrong_guesses = 0
+random_guesses = 0
 for index, match in df_matches.iterrows():
     # get players
     nameA = match["winner_name"]
@@ -363,11 +368,27 @@ for index, match in df_matches.iterrows():
         elo_dates_history.append(date)
 
     # Calculate P(A wins)
-    # pA = get_expected_win_probability(eloA, eloB)
-    # pB = get_expected_win_probability(eloB, eloA)
+    pA = get_expected_win_probability(eloA, eloB)
+    pB = get_expected_win_probability(eloB, eloA)
 
     # Find who wins
     S = 1 # A always wins
+
+    # run the model in 2026 to see if the elo system can predict the winning player
+    if date > pd.Timestamp("2026-01-01"):
+        if pA > 0.5:
+            # elo model guessed correctly
+            correct_guesses += 1
+        elif pA < 0.5:
+            wrong_guesses += 1
+        else:
+            random_guesses += 1
+            guess = random.random()
+            if guess >= 0.5:
+                # randomly chose correctly
+                correct_guesses += 1
+            else:
+                wrong_guesses += 1
 
     # Update ratings
     eloA, eloB = update_players_elo(eloA, eloB, S)
@@ -389,6 +410,12 @@ df_elos = df_elos.reset_index()
 df_elos = df_elos.sort_values("elo", ascending=False)
 print(df_elos)
 
+print(f"Percentage of correct guesses: {(correct_guesses / (correct_guesses+wrong_guesses)) * 100}%")
+print(f"Number of random guesses: {random_guesses}")
+
+matches_2026 = df_matches[df_matches["tourney_date"] > pd.Timestamp("2026-01-01")]
+print(f"Percentage of highest rank wins 2026: {find_higher_rank_win_percentage(matches_2026)}%")
+
 df_elos_history = pd.DataFrame(
     {
         "date": elo_dates_history,
@@ -396,15 +423,21 @@ df_elos_history = pd.DataFrame(
         "elo": elo_history
     }
 )
-print(df_elos_history)
 
 sinner_elo_history = df_elos_history[df_elos_history["player_name"] == "Jannik Sinner"]
-print(sinner_elo_history)
 
-plt.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
-plt.title("Sinner elo over time")
-plt.xlabel("Date")
-plt.ylabel("Elo")
+sinner_ranking_history = df_rankings[df_rankings["player"] == 206173]
+
+fig, (ax1, ax2) = plt.subplots(1, 2)
+
+ax1.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
+ax2.plot(sinner_ranking_history["ranking_date"], sinner_ranking_history["points"])
+ax1.set_title("Sinner elo over time")
+ax1.set_xlabel("Date")
+ax1.set_ylabel("Elo")
+ax2.set_title("Sinner ranking points over time")
+ax2.set_xlabel("Date")
+ax2.set_ylabel("Points")
 plt.show()
 
 # Build separate hard / clay / grass Elo ratings
