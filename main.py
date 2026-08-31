@@ -126,10 +126,12 @@ def win_probability_from_ranking(rank1, rank2):
 
     return probability
 
-# plt.bar(mid, df, width=widths, color=colors)
+# plt.plot(mid, df)
 # plt.ylim(0, 1)
 # plt.xlabel("Rank difference")
 # plt.ylabel("Probability of highest rank winning")
+# plt.title("Probability of highest rank winning vs ranking difference")
+# plt.savefig("prob_rank_winning_vs_rank_dif.png")
 # plt.show()
 
 # Which players have played the most matches
@@ -449,8 +451,7 @@ sinner_elo_history = df_elos_history[df_elos_history["player_name"] == "Jannik S
 
 sinner_ranking_history = df_rankings[df_rankings["player"] == 206173]
 
-fig, (ax1, ax2) = plt.subplots(1, 2)
-
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,6))
 ax1.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
 ax2.plot(sinner_ranking_history["ranking_date"], sinner_ranking_history["points"])
 ax1.set_title("Sinner elo over time")
@@ -459,6 +460,8 @@ ax1.set_ylabel("Elo")
 ax2.set_title("Sinner ranking points over time")
 ax2.set_xlabel("Date")
 ax2.set_ylabel("Points")
+plt.tight_layout()
+plt.savefig("sinner_elo_ranking_graph.png", bbox_inches="tight")
 plt.show()
 
 # Build separate hard / clay / grass Elo ratings
