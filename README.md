@@ -10,7 +10,7 @@ The above image displays how the probability of the higher ranked player winning
 As we can see, the probability starts around 55% and reaches around 75% for the most extreme cases.
 This is not surface specific.
 
-![alt text](https://github.com/GCorreia3/Gravity-Simulation/blob/main/sinner_elo_ranking_graph.png?raw=true)
+![alt text](https://github.com/GCorreia3/TennisMatchPredictor/blob/main/sinner_elo_ranking_graph.png?raw=true)
 
 The elo model starts each player at a rating of 1500, and updates each player based on who wins in a match.
 If the winner beats someone with a higher elo they will have a large increase in elo and the losing opponent with have a large decrease.
