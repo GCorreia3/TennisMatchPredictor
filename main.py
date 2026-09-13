@@ -1,50 +1,61 @@
-import numpy
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import random
+from math import *
+
 
 # Matches dataframes
-df_matches_2020 = pd.read_csv("atp_matches_2020.csv")
-df_matches_2021 = pd.read_csv("atp_matches_2021.csv")
-df_matches_2022 = pd.read_csv("atp_matches_2022.csv")
-df_matches_2023 = pd.read_csv("atp_matches_2023.csv")
-df_matches_2024 = pd.read_csv("atp_matches_2024.csv")
-df_matches_2025 = pd.read_csv("atp_matches_2025.csv")
-df_matches_2026 = pd.read_csv("atp_matches_2026.csv")
-matches_list = [df_matches_2020, df_matches_2021, df_matches_2022, df_matches_2023, df_matches_2024, df_matches_2025, df_matches_2026]
+df_matches_2020 = pd.read_csv("2020.csv")
+df_matches_2021 = pd.read_csv("2021.csv")
+df_matches_2022 = pd.read_csv("2022.csv")
+df_matches_2023 = pd.read_csv("2023.csv")
+df_matches_2024 = pd.read_csv("2024.csv")
+df_matches_2025 = pd.read_csv("2025.csv")
+df_matches_2026 = pd.read_csv("2026.csv")
+df_ongoing = pd.read_csv("ongoing_tourneys.csv")
+matches_list = [df_matches_2020, df_matches_2021, df_matches_2022, df_matches_2023, df_matches_2024, df_matches_2025, df_matches_2026, df_ongoing]
 df_matches = pd.concat(matches_list, axis=0, ignore_index=True)
 df_matches["tourney_date"] = pd.to_datetime(df_matches["tourney_date"], format="%Y%m%d")
 
 # Players dataframe
-df_players = pd.read_csv("atp_players.csv")
-#df_players["dob"] = pd.to_datetime(df_players["dob"], format="%Y%m%d")
+df_players = pd.read_csv("ATP_Database.csv")
+df_players["birthdate"] = pd.to_datetime(df_players["birthdate"], format="%Y%m%d")
+df_players = df_players.drop(columns=["turnedpro", "birthplace", "coaches", "atpname"])
+# columns: id, player, weight, height, hand, backhand, ioc
 
+print(df_players.info())
 
-df_current_rankings = pd.read_csv("atp_rankings_current.csv")
-df_rankings_20s = pd.read_csv("atp_rankings_20s.csv")
-rankings_list = [df_current_rankings, df_rankings_20s]
+df_rankings_2020 = pd.read_csv("atp_rankings_2020.csv")
+df_rankings_2021 = pd.read_csv("atp_rankings_2021.csv")
+df_rankings_2022 = pd.read_csv("atp_rankings_2022.csv")
+df_rankings_2023 = pd.read_csv("atp_rankings_2023.csv")
+df_rankings_2024 = pd.read_csv("atp_rankings_2024.csv")
+df_rankings_2025 = pd.read_csv("atp_rankings_2025.csv")
+df_rankings_2026 = pd.read_csv("atp_rankings_2026.csv")
+rankings_list = [df_rankings_2026, df_rankings_2025, df_rankings_2024, df_rankings_2023, df_rankings_2022, df_rankings_2021, df_rankings_2020]
 # combine dataframes to get all the rankings
 df_rankings = pd.concat(rankings_list, axis=0, ignore_index=True)
+# columns: ranking_date, rank, player, ranking_points
 
 # convert date int to datetime
 df_rankings['ranking_date'] = pd.to_datetime(df_rankings['ranking_date'], format='%Y%m%d')
-df_rankings = df_rankings.sort_values("ranking_date", ascending=True)
+#df_rankings = df_rankings.sort_values("ranking_date", ascending=True)
 
-def find_player_rankings(player_id):
-    return df_rankings.loc[df_rankings["player"] == player_id]
+def find_player_rankings(player_name):
+    return df_rankings.loc[df_rankings["player"] == player_name]
 
 def name_to_player(player_name):
-    first_name, last_name = player_name.split()
-    player = df_players.loc[(df_players["name_first"] == first_name) & (df_players["name_last"] == last_name)]
+    player = df_players.loc[df_players["player"] == player_name]
     return player
 
 def id_to_player(player_id):
-    player = df_players.loc[df_players["player_id"] == player_id]
+    player = df_players.loc[df_players["id"] == player_id]
     return player
 
 
 # How many matches are there
-#print(f"Number of matches: {len(df_matches)}")
+print(f"Number of matches: {len(df_matches)}")
 
 # What columns exist
 #print(df_matches.columns)
@@ -54,18 +65,18 @@ def id_to_player(player_id):
 
 # How many matches occur on each surface
 hard_matches = df_matches[df_matches.surface == "Hard"]
-#print(f"Number of matches on hard: {len(hard_matches)}")
+print(f"Number of matches on hard: {len(hard_matches)}")
 clay_matches = df_matches[df_matches.surface == "Clay"]
-#print(f"Number of matches on clay: {len(clay_matches)}")
+print(f"Number of matches on clay: {len(clay_matches)}")
 grass_matches = df_matches[df_matches.surface == "Grass"]
-#print(f"Number of matches on grass: {len(grass_matches)}")
+print(f"Number of matches on grass: {len(grass_matches)}")
 
 # What tournaments exist
-#print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
-#print(df_matches["tourney_name"].value_counts())
+print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
+print(df_matches["tourney_name"].value_counts())
 
 # How many unique players are there
-#print(f"Number of unique players: {df_players['player_id'].nunique()}")
+print(f"Number of unique players: {df_players['id'].nunique()}")
 
 # What percentage of matches are won by the higher-ranked player
 def find_higher_rank_win_percentage(matches: pd.DataFrame):
@@ -104,19 +115,25 @@ colors = ["red", "orange", "yellow", "green", "blue", "purple", "pink"]
 df_matches["rank_bucket"] = pd.cut(df_matches["rank_diff"], bins=bins)
 
 df = df_matches.groupby("rank_bucket")["higher_ranked_won"].mean()
-#print(df)
+print(df)
 
 # probability of player with rank1 beating player with rank2 based off previous data
 def win_probability_from_ranking(rank1, rank2):
+    # check for nan ranking
+    if pd.isna(rank1):
+        rank1 = 2000
+
+    if pd.isna(rank2):
+        rank2 = 2000
+
     rank_diff = rank1 - rank2
     abs_rank_diff = abs(rank_diff)
 
     for index, x in enumerate(bins):
-        print(index)
         if x == 0:
             continue
         if abs_rank_diff <= x:
-            probability = df.iloc[index]
+            probability = df.iloc[index-1]
             break
         elif abs_rank_diff > 500:
             probability = df.iloc[6]
@@ -131,18 +148,18 @@ def win_probability_from_ranking(rank1, rank2):
 # plt.xlabel("Rank difference")
 # plt.ylabel("Probability of highest rank winning")
 # plt.title("Probability of highest rank winning vs ranking difference")
-# plt.savefig("prob_rank_winning_vs_rank_dif.png")
+# plt.savefig("prob_rank_winning_vs_rank_dif2.png")
 # plt.show()
 
 # Which players have played the most matches
-wins_per_id = df_matches["winner_id"].value_counts()
-loss_per_id = df_matches["loser_id"].value_counts()
-unique_winner_ids = df_matches["winner_id"].unique()
-unique_loser_ids = df_matches["loser_id"].unique()
-unique_player_ids = numpy.unique(numpy.concatenate((unique_winner_ids, unique_loser_ids)))
+wins_per_id = df_matches["winner_id"].dropna().value_counts()
+loss_per_id = df_matches["loser_id"].dropna().value_counts()
+unique_winner_ids = df_matches["winner_id"].dropna().unique()
+unique_loser_ids = df_matches["loser_id"].dropna().unique()
+unique_player_ids = np.unique(np.concatenate((unique_winner_ids, unique_loser_ids)))
 total_matches_list = []
 win_percent_list = []
-unique_player_names = [id_to_player(id).iloc[0]["name_first"] + " " + id_to_player(id).iloc[0]["name_last"] for id in unique_player_ids]
+unique_player_names = [id_to_player(id).iloc[0]["player"] for id in unique_player_ids]
 for id in unique_player_ids:
     try:
         win_count = wins_per_id[id]
@@ -167,15 +184,14 @@ data = {
 }
 
 df_match_count_per_id = pd.DataFrame(data)
-#print(df_match_count_per_id.sort_values("match_count", ascending=False))
+print(df_match_count_per_id.sort_values("match_count", ascending=False))
 
 # Jannik Sinner: 206173
 
 # Find a player's ranking
 name = "Jannik Sinner"
-id = name_to_player(name).iloc[0]["player_id"]
-current_ranking = find_player_rankings(id).sort_values("ranking_date", ascending=False).iloc[0]["rank"]
-#print(f"Current {name} Ranking: {current_ranking}")
+current_ranking = find_player_rankings(name).sort_values("ranking_date", ascending=False).iloc[0]["rank"]
+print(f"Current {name} Ranking: {current_ranking}")
 
 date = pd.Timestamp("2025-06-26")
 
@@ -184,11 +200,11 @@ date = pd.Timestamp("2025-06-26")
 def get_player_stats(df_matches, name, date, surface):
     info_dict = {}
 
-    id = name_to_player(name).iloc[0]["player_id"]
+    id = name_to_player(name).iloc[0]["id"]
     info_dict["player_id"] = id
 
     # Find a player's ranking at a given date
-    rankings = find_player_rankings(id).sort_values("ranking_date", ascending=False)
+    rankings = find_player_rankings(name).sort_values("ranking_date", ascending=False)
     rankings_upto_date = rankings[rankings["ranking_date"] <= date]
     ranking_at_date = rankings_upto_date.iloc[0]["rank"]
     #print(f"Ranking on {date.strftime('%Y-%m-%d')}: {ranking_at_date}")
@@ -284,8 +300,8 @@ def find_upcoming_match_info(df_matches, name1, name2, date, surface):
     except:
         return print("Player 2 Name doesn't exist")
 
-    id1 = int(player1_info.iloc[0]["player_id"])
-    id2 = int(player2_info.iloc[0]["player_id"])
+    id1 = player1_info.iloc[0]["player_id"]
+    id2 = player2_info.iloc[0]["player_id"]
 
     head_to_head_info["player_id1"] = id1
     head_to_head_info["player_id2"] = id2
@@ -330,6 +346,7 @@ def find_upcoming_match_info(df_matches, name1, name2, date, surface):
 
     return head_to_head_info
 
+print(get_player_stats(df_matches, name, date, "Hard"))
 
 # Predict who wins between two players based on who has a higher rank at the time
 
@@ -342,8 +359,6 @@ else:
 
 # Build your first Elo rating system
 
-eloA = 1800
-eloB = 1200
 
 def get_expected_win_probability(elo1, elo2):
     return 1 / (1 + 10**((elo2-elo1)/400))
@@ -356,6 +371,10 @@ def update_players_elo(elo1, elo2, win):
     probability = get_expected_win_probability(elo1, elo2)
     return update_elo(elo1, win, probability), update_elo(elo2, 1-win, 1-probability)
 
+# Calculate Log_loss
+def log_loss(win_outcome, win_probability):
+    return -(win_outcome * log(win_probability) + (1 - win_outcome) * log(1 - win_probability))
+
 df_matches = df_matches.sort_values(["tourney_date", "match_num"], ascending=[True, True]) # sort so first match in list is first dated match
 players_elo = {}
 elo_dates_history = []
@@ -364,10 +383,15 @@ elo_history = []
 correct_guesses = 0
 wrong_guesses = 0
 random_guesses = 0
+elo_log_loss_sum = 0
+rank_log_loss_sum = 0
 for index, match in df_matches.iterrows():
     # get players
     nameA = match["winner_name"]
     nameB = match["loser_name"]
+
+    rankA = match["winner_rank"]
+    rankB = match["loser_rank"]
 
     date = match["tourney_date"]
 
@@ -398,6 +422,8 @@ for index, match in df_matches.iterrows():
 
     # run the model in 2026 to see if the elo system can predict the winning player
     if date > pd.Timestamp("2026-01-01"):
+        elo_log_loss_sum += log_loss(S, pA)
+        rank_log_loss_sum += log_loss(S, win_probability_from_ranking(rankA, rankB))
         if pA > 0.5:
             # elo model guessed correctly
             correct_guesses += 1
@@ -449,11 +475,11 @@ df_elos_history = pd.DataFrame(
 
 sinner_elo_history = df_elos_history[df_elos_history["player_name"] == "Jannik Sinner"]
 
-sinner_ranking_history = df_rankings[df_rankings["player"] == 206173]
+sinner_ranking_history = df_rankings[df_rankings["player"] == "Jannik Sinner"]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,6))
 ax1.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
-ax2.plot(sinner_ranking_history["ranking_date"], sinner_ranking_history["points"])
+ax2.plot(sinner_ranking_history["ranking_date"], sinner_ranking_history["ranking_points"])
 ax1.set_title("Sinner elo over time")
 ax1.set_xlabel("Date")
 ax1.set_ylabel("Elo")
@@ -461,8 +487,20 @@ ax2.set_title("Sinner ranking points over time")
 ax2.set_xlabel("Date")
 ax2.set_ylabel("Points")
 plt.tight_layout()
-plt.savefig("sinner_elo_ranking_graph.png", bbox_inches="tight")
-plt.show()
+# plt.savefig("sinner_elo_ranking_graph2.png", bbox_inches="tight")
+# plt.show()
+
+# Zverev vs Shelton
+zverev_elo = df_elos[df_elos["player_name"] == "Alexander Zverev"].iloc[0]["elo"]
+shelton_elo = df_elos[df_elos["player_name"] == "Ben Shelton"].iloc[0]["elo"]
+print(get_expected_win_probability(zverev_elo, shelton_elo))
+
+# Calculate log loss and compare ranked vs elo methods
+average_elo_log_loss = elo_log_loss_sum / (correct_guesses + wrong_guesses)
+print(f"Average elo log loss: {average_elo_log_loss}")
+average_rank_log_loss = rank_log_loss_sum / (correct_guesses + wrong_guesses) # involves data leakage but whatever
+print(f"Average rank log loss: {average_rank_log_loss}")
+# 0.693 is the baseline for guessing 50/50 each match
 
 # Build separate hard / clay / grass Elo ratings
 
