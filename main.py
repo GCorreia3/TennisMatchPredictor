@@ -24,7 +24,7 @@ df_players["birthdate"] = pd.to_datetime(df_players["birthdate"], format="%Y%m%d
 df_players = df_players.drop(columns=["turnedpro", "birthplace", "coaches", "atpname"])
 # columns: id, player, weight, height, hand, backhand, ioc
 
-print(df_players.info())
+#print(df_players.info())
 
 df_rankings_2020 = pd.read_csv("atp_rankings_2020.csv")
 df_rankings_2021 = pd.read_csv("atp_rankings_2021.csv")
@@ -55,7 +55,7 @@ def id_to_player(player_id):
 
 
 # How many matches are there
-print(f"Number of matches: {len(df_matches)}")
+#print(f"Number of matches: {len(df_matches)}")
 
 # What columns exist
 #print(df_matches.columns)
@@ -65,18 +65,18 @@ print(f"Number of matches: {len(df_matches)}")
 
 # How many matches occur on each surface
 hard_matches = df_matches[df_matches.surface == "Hard"]
-print(f"Number of matches on hard: {len(hard_matches)}")
+#print(f"Number of matches on hard: {len(hard_matches)}")
 clay_matches = df_matches[df_matches.surface == "Clay"]
-print(f"Number of matches on clay: {len(clay_matches)}")
+#print(f"Number of matches on clay: {len(clay_matches)}")
 grass_matches = df_matches[df_matches.surface == "Grass"]
-print(f"Number of matches on grass: {len(grass_matches)}")
+#print(f"Number of matches on grass: {len(grass_matches)}")
 
 # What tournaments exist
-print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
-print(df_matches["tourney_name"].value_counts())
+#print(f"Number of unique tournaments: {df_matches['tourney_name'].nunique()}")
+#print(df_matches["tourney_name"].value_counts())
 
 # How many unique players are there
-print(f"Number of unique players: {df_players['id'].nunique()}")
+#print(f"Number of unique players: {df_players['id'].nunique()}")
 
 # What percentage of matches are won by the higher-ranked player
 def find_higher_rank_win_percentage(matches: pd.DataFrame):
@@ -97,12 +97,12 @@ def find_higher_rank_win_percentage(matches: pd.DataFrame):
     else:
         return (winner_count / total_count) * 100
 
-print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}%")
+#print(f"Percentage of higher ranked winner: {find_higher_rank_win_percentage(df_matches)}%")
 
 # Does that percentage differ between hard/clay/grass
-print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}%")
-print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}%")
-print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}%")
+#print(f"Percentage of higher ranked winner hard: {find_higher_rank_win_percentage(hard_matches)}%")
+#print(f"Percentage of higher ranked winner clay: {find_higher_rank_win_percentage(clay_matches)}%")
+#print(f"Percentage of higher ranked winner grass: {find_higher_rank_win_percentage(grass_matches)}%")
 
 # How does ranking difference relate to probability of winning
 df_matches["rank_diff"] = (df_matches["winner_rank"] - df_matches["loser_rank"]).abs()
@@ -115,7 +115,7 @@ colors = ["red", "orange", "yellow", "green", "blue", "purple", "pink"]
 df_matches["rank_bucket"] = pd.cut(df_matches["rank_diff"], bins=bins)
 
 df = df_matches.groupby("rank_bucket")["higher_ranked_won"].mean()
-print(df)
+#print(df)
 
 # probability of player with rank1 beating player with rank2 based off previous data
 def win_probability_from_ranking(rank1, rank2):
@@ -184,14 +184,14 @@ data = {
 }
 
 df_match_count_per_id = pd.DataFrame(data)
-print(df_match_count_per_id.sort_values("match_count", ascending=False))
+#print(df_match_count_per_id.sort_values("match_count", ascending=False))
 
 # Jannik Sinner: 206173
 
 # Find a player's ranking
 name = "Jannik Sinner"
 current_ranking = find_player_rankings(name).sort_values("ranking_date", ascending=False).iloc[0]["rank"]
-print(f"Current {name} Ranking: {current_ranking}")
+#print(f"Current {name} Ranking: {current_ranking}")
 
 date = pd.Timestamp("2025-06-26")
 
@@ -346,19 +346,18 @@ def find_upcoming_match_info(df_matches, name1, name2, date, surface):
 
     return head_to_head_info
 
-print(get_player_stats(df_matches, name, date, "Hard"))
+#print(get_player_stats(df_matches, name, date, "Hard"))
 
 # Predict who wins between two players based on who has a higher rank at the time
 
 info = find_upcoming_match_info(df_matches, "Taylor Fritz", "Novak Djokovic", date, "Grass")
-print(info)
-if info["ranking1"] < info["ranking2"]:
-    print("Player 1 wins")
-else:
-    print("Player 2 wins")
+#print(info)
+# if info["ranking1"] < info["ranking2"]:
+#     print("Player 1 wins")
+# else:
+#     print("Player 2 wins")
 
-# Build your first Elo rating system
-
+# Build first Elo rating system
 
 def get_expected_win_probability(elo1, elo2):
     return 1 / (1 + 10**((elo2-elo1)/400))
@@ -376,15 +375,31 @@ def log_loss(win_outcome, win_probability):
     return -(win_outcome * log(win_probability) + (1 - win_outcome) * log(1 - win_probability))
 
 df_matches = df_matches.sort_values(["tourney_date", "match_num"], ascending=[True, True]) # sort so first match in list is first dated match
-players_elo = {}
+df_matches = df_matches.dropna(subset=["surface"])
+players_elo = {
+    "Overall": {},
+    "Hard": {},
+    "Clay": {},
+    "Grass": {}
+}
 elo_dates_history = []
 elo_players_history = []
 elo_history = []
+surface_history = []
+surface_elo_history = []
 correct_guesses = 0
 wrong_guesses = 0
 random_guesses = 0
 elo_log_loss_sum = 0
 rank_log_loss_sum = 0
+
+def update_elo_history(elo, name, date, surface, surface_elo):
+    elo_history.append(elo)
+    elo_players_history.append(name)
+    elo_dates_history.append(date)
+    surface_history.append(surface)
+    surface_elo_history.append(surface_elo)
+
 for index, match in df_matches.iterrows():
     # get players
     nameA = match["winner_name"]
@@ -395,23 +410,35 @@ for index, match in df_matches.iterrows():
 
     date = match["tourney_date"]
 
+    surface = match["surface"]
+
     # get current rating of A
-    if nameA in players_elo:
-        eloA = players_elo[nameA]
+    if nameA in players_elo["Overall"]:
+        eloA = players_elo["Overall"][nameA]
+        if nameA in players_elo[surface]:
+            surface_eloA = players_elo[surface][nameA]
+        else:
+            # haven't played on this surface yet
+            surface_eloA = 1500
+            update_elo_history(eloA, nameA, date, surface, surface_eloA)
     else:
         eloA = 1500 # default value
-        elo_history.append(1500)
-        elo_players_history.append(nameA)
-        elo_dates_history.append(date)
+        surface_eloA = 1500
+        update_elo_history(eloA, nameA, date, surface, surface_eloA)
 
     # get current rating of B
-    if nameB in players_elo:
-        eloB = players_elo[nameB]
+    if nameB in players_elo["Overall"]:
+        eloB = players_elo["Overall"][nameB]
+        if nameB in players_elo[surface]:
+            surface_eloB = players_elo[surface][nameB]
+        else:
+            # haven't played on this surface yet
+            surface_eloB = 1500
+            update_elo_history(eloB, nameB, date, surface, surface_eloB)
     else:
         eloB = 1500
-        elo_history.append(1500)
-        elo_players_history.append(nameB)
-        elo_dates_history.append(date)
+        surface_eloB = 1500
+        update_elo_history(eloB, nameB, date, surface, surface_eloB)
 
     # Calculate P(A wins)
     pA = get_expected_win_probability(eloA, eloB)
@@ -440,19 +467,17 @@ for index, match in df_matches.iterrows():
 
     # Update ratings
     eloA, eloB = update_players_elo(eloA, eloB, S)
-    players_elo[nameA] = eloA
-    players_elo[nameB] = eloB
+    surface_eloA, surface_eloB = update_players_elo(surface_eloA, surface_eloB, S)
+    players_elo["Overall"][nameA] = eloA
+    players_elo["Overall"][nameB] = eloB
+    players_elo[surface][nameA] = surface_eloA
+    players_elo[surface][nameB] = surface_eloB
 
     # Update history lists
-    elo_history.append(eloA)
-    elo_players_history.append(nameA)
-    elo_dates_history.append(date)
+    update_elo_history(eloA, nameA, date, surface, surface_eloA)
+    update_elo_history(eloB, nameB, date, surface, surface_eloB)
 
-    elo_history.append(eloB)
-    elo_players_history.append(nameB)
-    elo_dates_history.append(date)
-
-df_elos = pd.Series(players_elo, name="elo")
+df_elos = pd.Series(players_elo["Overall"], name="elo")
 df_elos.index.name = "player_name"
 df_elos = df_elos.reset_index()
 df_elos = df_elos.sort_values("elo", ascending=False)
@@ -469,31 +494,36 @@ df_elos_history = pd.DataFrame(
     {
         "date": elo_dates_history,
         "player_name": elo_players_history,
-        "elo": elo_history
+        "elo": elo_history,
+        "surface": surface_history,
+        "surface_elo": surface_elo_history
     }
 )
 
+
+sinner_surface_elo_history = df_elos_history[(df_elos_history["player_name"] == "Jannik Sinner") & (df_elos_history["surface"] == "Grass")]
 sinner_elo_history = df_elos_history[df_elos_history["player_name"] == "Jannik Sinner"]
 
 sinner_ranking_history = df_rankings[df_rankings["player"] == "Jannik Sinner"]
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10,6))
-ax1.plot(sinner_elo_history["date"], sinner_elo_history["elo"])
+ax1.plot(sinner_surface_elo_history["date"], sinner_surface_elo_history["surface_elo"])
 ax2.plot(sinner_ranking_history["ranking_date"], sinner_ranking_history["ranking_points"])
-ax1.set_title("Sinner elo over time")
+ax1.set_title("Sinner Grass elo over time")
 ax1.set_xlabel("Date")
 ax1.set_ylabel("Elo")
 ax2.set_title("Sinner ranking points over time")
 ax2.set_xlabel("Date")
 ax2.set_ylabel("Points")
 plt.tight_layout()
-# plt.savefig("sinner_elo_ranking_graph2.png", bbox_inches="tight")
+# plt.savefig("sinner_grass_elo_ranking_graph.png", bbox_inches="tight")
 # plt.show()
 
 # Zverev vs Shelton
 zverev_elo = df_elos[df_elos["player_name"] == "Alexander Zverev"].iloc[0]["elo"]
 shelton_elo = df_elos[df_elos["player_name"] == "Ben Shelton"].iloc[0]["elo"]
 print(get_expected_win_probability(zverev_elo, shelton_elo))
+print(win_probability_from_ranking(2, 9))
 
 # Calculate log loss and compare ranked vs elo methods
 average_elo_log_loss = elo_log_loss_sum / (correct_guesses + wrong_guesses)
@@ -503,6 +533,23 @@ print(f"Average rank log loss: {average_rank_log_loss}")
 # 0.693 is the baseline for guessing 50/50 each match
 
 # Build separate hard / clay / grass Elo ratings
+df_hard_elos = pd.Series(players_elo["Hard"], name="hard_elo")
+df_hard_elos.index.name = "player_name"
+df_hard_elos = df_hard_elos.reset_index()
+df_hard_elos = df_hard_elos.sort_values("hard_elo", ascending=False)
+print(df_hard_elos)
+
+df_clay_elos = pd.Series(players_elo["Clay"], name="clay_elo")
+df_clay_elos.index.name = "player_name"
+df_clay_elos = df_clay_elos.reset_index()
+df_clay_elos = df_clay_elos.sort_values("clay_elo", ascending=False)
+print(df_clay_elos)
+
+df_grass_elos = pd.Series(players_elo["Grass"], name="grass_elo")
+df_grass_elos.index.name = "player_name"
+df_grass_elos = df_grass_elos.reset_index()
+df_grass_elos = df_grass_elos.sort_values("grass_elo", ascending=False)
+print(df_grass_elos)
 
 # Turn each historical match into a row of pre-match features
 
