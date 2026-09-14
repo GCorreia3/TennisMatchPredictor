@@ -2,6 +2,8 @@ from playwright.sync_api import sync_playwright
 import pandas as pd
 from io import StringIO
 
+year = 2010
+
 # current week url
 start_url = (
     "https://www.atptour.com/en/rankings/singles"
@@ -63,9 +65,9 @@ with sync_playwright() as p:
         date_i = dates.nth(i).inner_text()
         date_i = date_i.replace(".", "")
         int_date = int(date_i)
-        if int_date < 20200000:
+        if int_date < year*10000:
             break
-        if int_date < 20210000:
+        if int_date < (year+1)*10000:
             date_list.append(date_i)
 
     context.close()
@@ -84,7 +86,12 @@ with sync_playwright() as p:
         context = browser.new_context()
         page = context.new_page()
         url = get_url(date)
-        table_html = get_table_html(url)
+        try:
+            table_html = get_table_html(url)
+        except:
+            print("didnt work")
+            context.close()
+            continue
         df = create_dataframe(table_html, date)
         df_list.append(df)
         print(i)
@@ -95,6 +102,6 @@ with sync_playwright() as p:
 df_matches = pd.concat(df_list, axis=0, ignore_index=True)
 
 df_matches.to_csv(
-    "atp_rankings_2020.csv",
+    f"atp_rankings_{year}.csv",
     index=False
 )
